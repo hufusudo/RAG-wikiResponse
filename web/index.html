@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLMwiki 智能伴学系统</title>
+<link rel="stylesheet" href="css/style.css?v=0.2.4">
+<link rel="stylesheet" href="css/components.css?v=0.2.4">
+<!-- KaTeX 数学公式渲染（CDN；离线时自动回退为原始代码展示） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+</head>
+<body>
+
+<!-- ========== 状态 A：未打开 Vault ========== -->
+<section id="state-welcome" class="welcome">
+  <div class="welcome-card">
+    <div class="welcome-logo">📚</div>
+    <h1>LLMwiki</h1>
+    <p class="subtitle">智能伴学系统 <span id="app-version"></span></p>
+    <p class="welcome-desc">读取本地 Obsidian 笔记，建立 Wiki 索引层，<br>为每次问答提供原文溯源。</p>
+    <button id="btn-open-vault" class="btn btn-primary btn-open-vault">📂 打开本地仓库…</button>
+    <p class="muted small welcome-hint">点击后弹出文件夹选择器（也可在路径栏直接粘贴路径）</p>
+    <p id="welcome-error" class="error-text hidden"></p>
+    <div class="welcome-links">
+      <button class="btn-link" id="btn-quickstart">快速开始</button>
+      <span class="dot">·</span>
+      <button class="btn-link" id="btn-open-settings">模型与 API Key 设置</button>
+      <span class="dot">·</span>
+      <button class="btn-link" id="btn-help">帮助</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 状态 B：工作台 ========== -->
+<div id="state-app" class="app hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand">LLMwiki</span>
+      <span class="vault-name" id="vault-name">—</span>
+      <span class="vault-path" id="vault-path" title=""></span>
+    </div>
+    <div class="topbar-stats" id="topbar-stats"></div>
+    <div class="topbar-actions">
+      <button id="btn-switch" class="btn btn-ghost" title="弹出文件夹选择器，打开其它仓库">切换仓库…</button>
+      <button id="btn-reindex" class="btn btn-ghost">初始化 / 更新索引</button>
+      <button id="btn-settings" class="btn btn-ghost">设置</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <!-- 左侧：问答区 -->
+    <section class="chat-panel">
+      <aside class="sessions">
+        <div class="sessions-head">
+          <button id="btn-new-session" class="btn btn-primary btn-sm">＋ 新建会话</button>
+        </div>
+        <div id="session-list" class="session-list"></div>
+      </aside>
+      <div class="chat-main">
+      <div id="chat-messages" class="chat-messages">
+        <div class="chat-empty">
+          <p>向你的知识库提问。</p>
+          <p class="muted">回答将展示寻址轨迹与 Raw 原文来源。</p>
+        </div>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <div class="chat-box">
+          <div class="chat-box-main">
+            <textarea id="chat-input" rows="2"
+                      placeholder="向知识库提问…（Enter 发送，Shift+Enter 换行）"></textarea>
+            <button type="submit" id="btn-send" class="btn-send">→ 发送</button>
+          </div>
+          <div class="chat-box-meta">
+            <span class="meta-vault" id="meta-vault" title="当前 Vault">
+              📁 <b id="meta-vault-name">—</b>
+            </span>
+            <div class="model-picker">
+              <button type="button" id="btn-model" class="meta-btn" title="切换模型">
+                ⚡ <span id="btn-model-label">模型</span>
+              </button>
+              <div id="model-menu" class="model-menu hidden"></div>
+            </div>
+            <button type="button" id="btn-style" class="meta-btn"
+                    title="设置当前仓库的全局回答风格 Prompt">📝 回答风格</button>
+          </div>
+        </div>
+      </form>
+      </div>
+    </section>
+
+    <!-- 右侧：知识工作区 -->
+    <aside class="side-panel">
+      <nav class="tabs">
+        <button class="tab active" data-tab="tree">索引树</button>
+        <button class="tab" data-tab="wiki">Wiki 管理</button>
+      </nav>
+      <div id="tab-tree" class="tab-body">
+        <div id="index-tree" class="tree"><p class="muted pad">加载中…</p></div>
+      </div>
+      <div id="tab-wiki" class="tab-body hidden">
+        <div class="wiki-toolbar">
+          <button id="btn-batch" class="btn btn-primary">批量初始化</button>
+          <span id="batch-hint" class="muted">将未 Wiki 化的 Raw 逐篇生成卡片</span>
+        </div>
+        <div id="batch-progress" class="batch-progress hidden"></div>
+        <div id="missing-list" class="missing-list"></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- ========== Modal：设置 ========== -->
+<div id="modal-settings" class="modal-mask hidden">
+  <div class="modal">
+    <header class="modal-head">
+      <h3>模型与 API Key 设置</h3>
+      <button class="btn-close" data-close="modal-settings">×</button>
+    </header>
+    <div class="modal-body">
+      <p class="muted small">支持 OpenAI 兼容接口（DeepSeek / OpenAI / 智谱 / 通义 / 硅基流动 等）。只需填 Key 与 Base URL，保存后自动获取可用模型，可在输入框左侧随时切换。</p>
+      <label>LLM_API_KEY<input id="set-llm-key" type="password" placeholder="sk-…"></label>
+      <label>LLM_BASE_URL<input id="set-llm-url" type="text" placeholder="https://api.deepseek.com/v1"></label>
+      <hr>
+      <label>EMBEDDING_API_KEY<input id="set-emb-key" type="password" placeholder="留空则使用本地离线 Embedding"></label>
+      <label>EMBEDDING_BASE_URL<input id="set-emb-url" type="text" placeholder="https://…/v1（可选）"></label>
+      <div class="modal-foot">
+        <button id="btn-test-llm" class="btn btn-ghost">测试连接</button>
+        <span id="llm-test-result" class="small"></span>
+        <span class="flex1"></span>
+        <button id="btn-save-settings" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Modal：文件夹选择器 ========== -->
+<div id="modal-fs" class="modal-mask hidden">
+  <div class="modal">
+    <header class="modal-head">
+      <h3>选择 Vault 文件夹</h3>
+      <button class="btn-close" data-close="modal-fs">×</button>
+    </header>
+    <div class="modal-body">
+      <div class="fs-bar">
+        <button id="btn-fs-up" class="btn btn-ghost btn-sm" title="上级目录">↑ 上级</button>
+        <button id="btn-fs-home" class="btn btn-ghost btn-sm" title="主目录">🏠 主目录</button>
+        <input id="fs-path" class="fs-path" type="text" spellcheck="false"
+               placeholder="/home/…">
+        <button id="btn-fs-go" class="btn btn-ghost btn-sm">前往</button>
+      </div>
+      <p id="fs-error" class="error-text small hidden"></p>
+      <div id="fs-list" class="fs-list"></div>
+      <p class="muted small">进入目录后点「选择此文件夹」；含笔记的仓库目录即可作为 Vault（隐藏目录可在路径栏手输进入）。</p>
+    </div>
+    <div class="modal-foot">
+      <span class="flex1"></span>
+      <button class="btn" data-close="modal-fs">取消</button>
+      <button id="btn-fs-pick" class="btn btn-primary">选择此文件夹</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Modal：全局回答风格 Prompt ========== -->
+<div id="modal-prompt" class="modal-mask hidden">
+  <div class="modal">
+    <header class="modal-head">
+      <h3>回答风格 Prompt（当前仓库全局）</h3>
+      <button class="btn-close" data-close="modal-prompt">×</button>
+    </header>
+    <div class="modal-body">
+      <p class="muted small">这段文字会附加进每次问答的系统提示，用于固定回答风格（语气、篇幅、推导详略、复习面向…）。
+        仅对当前打开的仓库生效，仓库内所有会话通用；不影响 Wiki 卡片提炼。</p>
+      <textarea id="prompt-editor" class="draft-editor" rows="11" spellcheck="false"
+placeholder="例如：
+- 用费曼式讲解：先给直觉类比，再给形式化定义
+- 公式必须给出完整推导步骤，不要跳步
+- 面向考研复习，重点标注高频考点与易错点
+- 回答控制在 500 字以内"></textarea>
+      <div class="modal-foot">
+        <button id="btn-prompt-clear" class="btn btn-ghost">清空</button>
+        <span class="flex1"></span>
+        <span id="prompt-status" class="small muted"></span>
+        <button id="btn-prompt-save" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Modal：帮助 / 快速开始 ========== -->
+<div id="modal-help" class="modal-mask hidden">
+  <div class="modal modal-wide">
+    <header class="modal-head">
+      <h3>帮助</h3>
+      <button class="btn-close" data-close="modal-help">×</button>
+    </header>
+    <div class="modal-body md" id="help-body"></div>
+  </div>
+</div>
+
+<!-- ========== Modal：批量初始化 Token 确认 ========== -->
+<div id="modal-batch" class="modal-mask hidden">
+  <div class="modal">
+    <header class="modal-head">
+      <h3>批量初始化 · Token 消耗确认</h3>
+      <button class="btn-close" data-close="modal-batch">×</button>
+    </header>
+    <div class="modal-body">
+      <div class="batch-warn">
+        ⚠️ 批量初始化会<span class="batch-warn-strong">逐篇调用 LLM</span>，笔记越多消耗越大。
+        单篇输入上限 12,000 字符（超长自动截断），上下文不会因笔记总数变大而爆炸，
+        但<span class="batch-warn-strong">总 Token 消耗随篇数线性增长</span>。
+      </div>
+      <div class="batch-stats" id="batch-stats"></div>
+      <label class="batch-scope-label">初始化范围
+        <select id="batch-scope"></select>
+      </label>
+      <div class="batch-alt">
+        💡 不是必须批量：不初始化也能问答（冷启动按 raw 标题兜底检索）；
+        问答命中未覆盖的知识点时，Lazy 飞轮会自动补卡——<b>Token 只花在被问过的知识上</b>。
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" data-close="modal-batch">取消</button>
+      <button id="btn-batch-confirm" class="btn btn-primary">开始批量初始化</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Modal：预览（raw / wiki / 索引） ========== -->
+<div id="modal-preview" class="modal-mask hidden">
+  <div class="modal modal-wide">
+    <header class="modal-head">
+      <h3 id="preview-title">预览</h3>
+      <span id="preview-path" class="muted small"></span>
+      <button class="btn-close" data-close="modal-preview">×</button>
+    </header>
+    <div class="modal-body md" id="preview-body"></div>
+  </div>
+</div>
+
+<!-- ========== Modal：Wiki 草稿编辑 ========== -->
+<div id="modal-draft" class="modal-mask hidden">
+  <div class="modal modal-wide">
+    <header class="modal-head">
+      <h3>Wiki 草稿（可编辑后保存）</h3>
+      <button class="btn-close" data-close="modal-draft">×</button>
+    </header>
+    <div class="modal-body">
+      <p id="draft-warnings" class="warn-text small hidden"></p>
+      <textarea id="draft-editor" class="draft-editor" rows="18" spellcheck="false"></textarea>
+      <div class="modal-foot">
+        <button id="btn-save-draft" class="btn btn-primary">确认保存到 wiki/</button>
+        <span id="draft-status" class="small muted"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/page_table_view.js?v=0.2.4"></script>
+<script src="js/chat.js?v=0.2.4"></script>
+<script src="js/app.js?v=0.2.4"></script>
+</body>
+</html>

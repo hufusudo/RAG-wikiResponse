@@ -1,0 +1,152 @@
+/* 可复用组件：Modal / Toast / 追寻轨迹 / Markdown 渲染 */
+
+/* ---------- Modal（150~200ms 轻过渡） */
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, .38);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 8vh 16px 16px; z-index: 100;
+  animation: fadeIn 160ms ease;
+}
+.modal {
+  width: 520px; max-width: 96vw; max-height: 82vh; overflow-y: auto;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, .14);
+  animation: popIn 160ms ease;
+}
+.modal-wide { width: 760px; }
+.modal-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg);
+}
+.modal-head h3 { margin: 0; font-size: 15px; flex: 1; }
+.modal-body { padding: 16px 18px; }
+.modal-body label { display: block; margin-bottom: 12px; font-size: 12px; color: var(--muted); }
+.modal-body label input {
+  display: block; width: 100%; margin-top: 4px; padding: 8px 10px;
+  font: inherit; font-size: 13px; border: 1px solid var(--border);
+  border-radius: var(--radius); outline: none; transition: border-color var(--transition);
+}
+.modal-body label input:focus { border-color: var(--accent); }
+.modal-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+
+/* 批量初始化确认弹窗 */
+.batch-warn {
+  padding: 10px 12px;
+  border: 1px solid var(--warn, #d97706);
+  border-radius: 6px;
+  background: rgba(217, 119, 6, 0.08);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.batch-warn-strong { font-weight: 600; color: var(--warn, #d97706); }
+.batch-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+.batch-stats .stat {
+  padding: 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  text-align: center;
+}
+.batch-stats .stat-val { font-size: 16px; font-weight: 600; }
+.batch-stats .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.batch-scope-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px !important;
+}
+.batch-scope-label select { flex: 1; padding: 6px 8px; }
+.batch-alt {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--bg-soft, #f3f4f6);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.draft-editor {
+  width: 100%; font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px; outline: none; resize: vertical; background: var(--bg-2);
+}
+.draft-editor:focus { border-color: var(--accent); background: var(--bg); }
+
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes popIn { from { opacity: 0; transform: translateY(-6px) scale(.99); } }
+
+/* ---------- Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--title); color: #fff; font-size: 13px;
+  padding: 9px 18px; border-radius: 999px; z-index: 200;
+  animation: popIn 160ms ease; max-width: 80vw;
+}
+.toast.err { background: var(--err); }
+.toast.ok { background: var(--ok); }
+
+/* ---------- 寻址轨迹（§17：仅检索过程可视化，非真实地址） */
+.route-trace {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  font-size: 11.5px; color: var(--muted);
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px;
+}
+.route-step { white-space: nowrap; }
+.route-step .lv {
+  display: inline-block; padding: 0 5px; margin-right: 4px;
+  border-radius: 4px; background: var(--accent-soft); color: var(--accent);
+  font-size: 10px; font-weight: 700;
+}
+.route-arrow { color: var(--border); }
+.route-step.clickable { cursor: pointer; text-decoration: underline dotted; }
+
+/* ---------- Markdown 渲染 */
+.md h1, .md h2, .md h3, .md h4 { margin: .9em 0 .35em; }
+.md h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.md h1 { font-size: 18px; }
+.md blockquote {
+  margin: .5em 0; padding: 6px 12px; border-left: 3px solid var(--accent);
+  background: var(--accent-soft); border-radius: 0 6px 6px 0; color: var(--text);
+}
+.md ul, .md ol { margin: .4em 0; padding-left: 1.5em; }
+.md code.inline { background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+.md .wikilink { color: var(--accent); border-bottom: 1px dotted var(--accent); cursor: pointer; }
+.md table { border-collapse: collapse; margin: .5em 0; }
+.md td, .md th { border: 1px solid var(--border); padding: 4px 10px; font-size: 13px; }
+
+/* 数学公式原始代码回退样式（KaTeX 未加载时） */
+.math-raw {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  background: var(--bg-soft, #f3f4f6);
+  padding: 1px 5px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+/* ---------- 文件夹选择器 ---------- */
+.fs-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+.fs-path {
+  flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: var(--radius); outline: none;
+  color: var(--text); background: var(--bg);
+}
+.fs-path:focus { border-color: var(--accent); }
+.fs-list {
+  min-height: 240px; max-height: 320px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 4px; margin-bottom: 10px; background: var(--bg);
+}
+.fs-item {
+  display: block; width: 100%; text-align: left; padding: 7px 10px;
+  border: 0; background: none; color: var(--text); font: inherit; font-size: 13.5px;
+  border-radius: 6px; cursor: pointer;
+  transition: background var(--transition);
+}
+.fs-item:hover { background: var(--accent-soft); }

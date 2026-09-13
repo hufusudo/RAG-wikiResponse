@@ -1,0 +1,30 @@
+# 环境与密钥
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 演示数据（可用 scripts/make_demo_vault.py 重新生成）
+demo_vault/
+
+# 个人真实笔记库（绝不上传）
+huangfei_vault/
+
+# 项目根的 wiki/ 是误把项目当 Vault 打开时产生的应用状态（真正的 wiki/ 在各 Vault 内）
+wiki/
+
+# 本地 AI 协作配置（ECC 注入的规则/agents，非项目本体）
+.claude/
+
+# 开发过程文档与本地协作配置（不随公开仓库发布）
+布局适配设计方案.md
+项目计划.md
+项目进度与问题.md
+CGC_REPORT.md
+.mcp.json
+CLAUDE.md
+
+# CGC 代码图谱工具本地配置（工具生成，不随仓库发布）
+.cgcignore
